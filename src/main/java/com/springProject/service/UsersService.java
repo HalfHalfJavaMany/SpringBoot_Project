@@ -66,9 +66,6 @@ public class UsersService {
     }
 
     @Transactional(readOnly = true)
-    public boolean isEmailDuplicate(String email) { return usersRepository.existsByEmail(email);}
-
-    @Transactional(readOnly = true)
     public boolean isFindAccount(String name, String email) {
         Users user = usersRepository.findByNameAndEmail(name, email);
 
@@ -200,7 +197,6 @@ public class UsersService {
         isBanned();
         Users findUsers = usersRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("잘못된 ID 입니다."));
         findUsers.setIsActivated(false);
-        findUsers.setAuth(Users.UserAuth.stop); //user -> stop
 
         BannedUser user = BannedUser.builder()
                 .users(findUsers)
@@ -228,7 +224,6 @@ public class UsersService {
         
         //정지 테이블의 로그는 그대로 남기고, 유저 테이블의 컬럼 값만 업데이트(banned_id)
         findUsers.setIsActivated(true);
-        findUsers.setAuth(Users.UserAuth.user); //stop -> user
         usersRepository.save(findUsers);
         return ConvertUtils.convertUsersToDto(findUsers);
     }
@@ -258,10 +253,8 @@ public class UsersService {
         if (findUser.getBannedUser() == null)
             return;
         if (LocalDateTime.now().isAfter(findUser.getBannedUser().getBannedDate())) {
-            findUser.setBannedUser(null);
             findUser.setIsActivated(true);
-            findUser.setAuth(Users.UserAuth.user); //stop -> user
-            usersRepository.save(findUser);
+            bannedUserRepository.deleteByUsersId(findUser.getId());
             return;
         }
 
